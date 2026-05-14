@@ -1,34 +1,18 @@
 <?php
+// Database configuration variables
+$host = "localhost";
+$user = "root";
+$pass = "";
+$db   = "food_ordering_system";
 
-class Database {
+// 1. Database connection create kora
+$conn = mysqli_connect($host, $user, $pass, $db);
 
-    private $host = "localhost";
-    private $username = "root";
-    private $password = "";
-    private $database = "online_food_ordering";
-
-    public $conn;
-
-    // Database Connection
-    public function connect() {
-
-        $this->conn = new mysqli(
-            $this->host,
-            $this->username,
-            $this->password,
-            $this->database
-        );
-
-        // Check Connection
-        if ($this->conn->connect_error) {
-            die("Database Connection Failed: " . $this->conn->connect_error);
-        }
-
-        // Set Character Encoding
-        $this->conn->set_charset("utf8mb4");
-
-        return $this->conn;
-    }
+// 2. Connection check kora
+if (!$conn) {
+    // Defense-er jonno error message-ta sundor vabe deya
+    die("Database Connection Failed: " . mysqli_connect_error());
 }
+mysqli_set_charset($conn, "utf8mb4");
 
-?>
+ ?> 
