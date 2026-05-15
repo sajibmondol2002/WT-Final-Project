@@ -9,23 +9,30 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'restaurant_manager') 
 }
 
 $res_id = $_SESSION['restaurant_id'];
+
+// --- Dynamic Stats Logic ---
+// Fetch Active Menu Count
+$count_sql = "SELECT COUNT(*) as total FROM menu_items WHERE restaurant_id = '$res_id'";
+$count_result = mysqli_query($conn, $count_sql);
+$menu_count = mysqli_fetch_assoc($count_result)['total'];
+
+// Fetch Recent Items
+$menu_sql = "SELECT * FROM menu_items 
+             WHERE restaurant_id='$res_id'
+             ORDER BY id DESC
+             LIMIT 5";
+$menu_result = mysqli_query($conn, $menu_sql);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Manager Portal</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    
-    <script src="../assets/js/main.js"></script>
-
     <meta charset="UTF-8">
-    <title>Manager Dashboard</title>
+    <title>Manager Dashboard | RM Portal</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
-        /* Dashboard layout design */
         body { font-family: 'Poppins', sans-serif; margin: 0; display: flex; background: #f4f7f6; }
         .sidebar { width: 250px; background: #2c3e50; height: 100vh; color: white; padding: 20px; position: fixed; }
         .main-content { margin-left: 270px; padding: 30px; width: calc(100% - 270px); }
@@ -34,51 +41,40 @@ $res_id = $_SESSION['restaurant_id'];
         .sidebar a:hover { background: #34495e; color: white; }
         .sidebar i { margin-right: 10px; width: 20px; }
 
-        /* AJAX Alert Style */
         #ajax-order-alert { 
-            background: #e74c3c; 
-            color: white; 
-            padding: 15px; 
-            border-radius: 8px; 
-            margin-bottom: 20px; 
-            display: none; /* Default faka thakbe */
-            animation: blink 1s infinite;
+            background: #e74c3c; color: white; padding: 15px; border-radius: 8px; 
+            margin-bottom: 20px; display: none; animation: blink 1s infinite;
         }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
         .stat-grid { display: flex; gap: 20px; margin-top: 20px; }
         .card { background: white; padding: 20px; border-radius: 10px; flex: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
         .card h3 { color: #7f8c8d; margin: 0; font-size: 14px; }
-        .card p { font-size: 28px; margin: 10px 0; color: #2c3e50; }
+        .card p { font-size: 28px; margin: 10px 0; color: #2c3e50; font-weight: bold; }
+        
+        .btn-delete { color: #e74c3c; text-decoration: none; transition: 0.3s; }
+        .btn-delete:hover { color: #c0392b; }
     </style>
 
     <script>
-        // --- Eita holo apnar AJAX Logic ---
         function fetchNewOrders() {
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function() {
                 if (this.readyState == 4 && this.status == 200) {
-                    // JSON response parse kora
                     var response = JSON.parse(this.responseText);
                     var alertBox = document.getElementById("ajax-order-alert");
                     var countText = document.getElementById("order-count-text");
-
                     if (response.count > 0) {
-                        // Notun order thakle alert dekhabe
                         alertBox.style.display = "block";
                         countText.innerHTML = response.count;
                     } else {
-                        // Order na thakle alert hide hobe
                         alertBox.style.display = "none";
                     }
                 }
             };
-            // ajax/new_orders.php file-ke call kora
             xhttp.open("GET", "../ajax/new_orders.php", true);
             xhttp.send();
         }
-
-        // Protice 5 second por por check korbe
         setInterval(fetchNewOrders, 5000);
     </script>
 </head>
@@ -113,7 +109,7 @@ $res_id = $_SESSION['restaurant_id'];
             </div>
             <div class="card">
                 <h3>Active Menu</h3>
-                <p>0</p>
+                <p><?php echo $menu_count; ?></p>
             </div>
             <div class="card">
                 <h3>Total Reviews</h3>
@@ -121,11 +117,45 @@ $res_id = $_SESSION['restaurant_id'];
             </div>
         </div>
 
-        <div style="margin-top: 40px; background: white; padding: 20px; border-radius: 10px;">
-            <h3>Welcome to your Management Panel</h3>
-            <p>Eikhane apni apnar restaurant-er menu update, order manage ebong review dekhte parben. Notun order ashle upor-er red bar-ti auto notify korbe (AJAX use kore).</p>
+        <div style="margin-top: 40px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h3 style="margin-bottom:20px;">
+                <i class="fas fa-utensils"></i> Recently Added Menu Items
+            </h3>
+
+            <?php if(mysqli_num_rows($menu_result) > 0): ?>
+                <table style="width:100%; border-collapse: collapse;">
+                    <tr style="background:#3498db; color:white;">
+                        <th style="padding:12px; text-align:left;">Food Item</th>
+                        <th style="padding:12px; text-align:left;">Price</th>
+                        <th style="padding:12px; text-align:left;">Description</th>
+                        <th style="padding:12px; text-align:center;">Action</th>
+                    </tr>
+
+                    <?php while($item = mysqli_fetch_assoc($menu_result)): ?>
+                    <tr style="border-bottom:1px solid #ddd;">
+                        <td style="padding:12px; font-weight: bold;">
+                            <?php echo htmlspecialchars($item['name']); ?>
+                        </td>
+                        <td style="padding:12px;">
+                            $<?php echo number_format($item['price'], 2); ?>
+                        </td>
+                        <td style="padding:12px; color:#666;">
+                            <?php echo htmlspecialchars($item['description']); ?>
+                        </td>
+                        <td style="padding:12px; text-align:center;">
+                            <a href="../controllers/MenuController.php?delete_id=<?php echo $item['id']; ?>" 
+                               class="btn-delete" 
+                               onclick="return confirm('Are you sure you want to delete this item?');">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                </table>
+            <?php else: ?>
+                <p style="color:#777; text-align: center; padding: 20px;">No menu items added yet.</p>
+            <?php endif; ?>
         </div>
     </div>
-
 </body>
 </html>

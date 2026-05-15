@@ -101,3 +101,15 @@ button:hover {
     border-radius: 5px;
     display: none; /* Hide by default, AJAX will show it */
 }
+.form-container label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.form-container textarea {
+    resize: vertical;
+    min-height: 100px;
+}

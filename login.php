@@ -6,21 +6,25 @@ if (isset($_POST['login'])) {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    $sql = "SELECT * FROM users WHERE email = '$email' AND password_hash = '$password' AND role = 'restaurant_manager'";
+    $sql = "SELECT * FROM users WHERE email = '$email' AND role = 'restaurant_manager'";
     $result = mysqli_query($conn, $sql);
 
     if (mysqli_num_rows($result) === 1) {
         $user = mysqli_fetch_assoc($result);
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['role'] = $user['role'];
+        if (password_verify($password, $user['password_hash'])) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['role'] = $user['role'];
 
-        $res_sql = "SELECT id FROM restaurants WHERE manager_id = " . $user['id'];
-        $res_result = mysqli_query($conn, $res_sql);
-        $res_data = mysqli_fetch_assoc($res_result);
-        $_SESSION['restaurant_id'] = $res_data['id'];
+            $res_sql = "SELECT id FROM restaurants WHERE manager_id = " . $user['id'];
+            $res_result = mysqli_query($conn, $res_sql);
+            $res_data = mysqli_fetch_assoc($res_result);
+            $_SESSION['restaurant_id'] = $res_data['id'];
 
-        header("Location: views/dashboard.php");
-        exit();
+            header("Location: views/dashboard.php");
+            exit();
+        } else {
+            $error = "Invalid Login Credentials!";
+        }
     } else {
         $error = "Invalid Login Credentials!";
     }
