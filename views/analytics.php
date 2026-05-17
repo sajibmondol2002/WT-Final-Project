@@ -1,122 +1,114 @@
-<?php 
-require_once '../config/database.php';
-session_start();
+<section class="section-title">
+    <h2>Sales Analytics</h2>
+</section>
+<?php require __DIR__ . '/nav.php'; ?>
 
-// Security check
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'restaurant_manager') {
-    header("Location: ../login.php");
-    exit();
-}
+<div class="grid grid-2" style="margin-bottom:24px;">
+    <div class="card"><div class="card-body"><h3>Total Orders</h3><p><?php echo sanitize($summary['total_orders'] ?? 0); ?></p></div></div>
+    <div class="card"><div class="card-body"><h3>Total Revenue</h3><p><?php echo formatCurrency((float) ($summary['total_revenue'] ?? 0)); ?></p></div></div>
+    <div class="card"><div class="card-body"><h3>Average Order Value</h3><p><?php echo formatCurrency((float) ($summary['average_order_value'] ?? 0)); ?></p></div></div>
+</div>
 
-$res_id = $_SESSION['restaurant_id'];
+<section class="section-title">
+    <h2>Orders by Day</h2>
+</section>
+<?php if (empty($ordersByDay)): ?>
+    <div class="card"><div class="card-body"><p>No daily order data available.</p></div></div>
+<?php else: ?>
+    <table class="table">
+        <thead><tr><th>Date</th><th>Orders</th><th>Revenue</th></tr></thead>
+        <tbody>
+            <?php foreach ($ordersByDay as $row): ?>
+                <tr>
+                    <td><?php echo sanitize($row['period']); ?></td>
+                    <td><?php echo sanitize($row['orders']); ?></td>
+                    <td><?php echo formatCurrency((float) $row['revenue']); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
 
-// 1. Fetch Summary Stats
-$sql = "SELECT SUM(total_amount) as revenue, COUNT(id) as total_orders FROM orders WHERE restaurant_id = '$res_id' AND status = 'delivered'";
-$res = mysqli_query($conn, $sql);
-$data = mysqli_fetch_assoc($res);
-$revenue = $data['revenue'] ?? 0;
-$orders = $data['total_orders'] ?? 0;
+<section class="section-title" style="margin-top:32px;">
+    <h2>Orders by Week</h2>
+</section>
+<?php if (empty($ordersByWeek)): ?>
+    <div class="card"><div class="card-body"><p>No weekly order data available.</p></div></div>
+<?php else: ?>
+    <table class="table">
+        <thead><tr><th>Year Week</th><th>Orders</th><th>Revenue</th></tr></thead>
+        <tbody>
+            <?php foreach ($ordersByWeek as $row): ?>
+                <tr>
+                    <td><?php echo sanitize($row['period']); ?></td>
+                    <td><?php echo sanitize($row['orders']); ?></td>
+                    <td><?php echo formatCurrency((float) $row['revenue']); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
 
-// 2. Fetch Data for Chart (Last 7 Days Revenue)
-$chart_sql = "SELECT DATE(created_at) as date, SUM(total_amount) as daily_revenue 
-              FROM orders 
-              WHERE restaurant_id = '$res_id' AND status = 'delivered' 
-              GROUP BY DATE(created_at) 
-              ORDER BY date ASC LIMIT 7";
-$chart_res = mysqli_query($conn, $chart_sql);
+<section class="section-title" style="margin-top:32px;">
+    <h2>Orders by Month</h2>
+</section>
+<?php if (empty($ordersByMonth)): ?>
+    <div class="card"><div class="card-body"><p>No monthly order data available.</p></div></div>
+<?php else: ?>
+    <table class="table">
+        <thead><tr><th>Month</th><th>Orders</th><th>Revenue</th></tr></thead>
+        <tbody>
+            <?php foreach ($ordersByMonth as $row): ?>
+                <tr>
+                    <td><?php echo sanitize($row['period']); ?></td>
+                    <td><?php echo sanitize($row['orders']); ?></td>
+                    <td><?php echo formatCurrency((float) $row['revenue']); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
 
-$labels = [];
-$amounts = [];
-while($row = mysqli_fetch_assoc($chart_res)) {
-    $labels[] = $row['date'];
-    $amounts[] = $row['daily_revenue'];
-}
-?>
+<section class="section-title" style="margin-top:32px;">
+    <h2>Most Ordered Items</h2>
+</section>
+<?php if (empty($topItems)): ?>
+    <div class="card"><div class="card-body"><p>No item data available.</p></div></div>
+<?php else: ?>
+    <table class="table">
+        <thead><tr><th>Item</th><th>Quantity Ordered</th><th>Revenue</th></tr></thead>
+        <tbody>
+            <?php foreach ($topItems as $item): ?>
+                <tr>
+                    <td><?php echo sanitize($item['name']); ?></td>
+                    <td><?php echo sanitize($item['total_quantity']); ?></td>
+                    <td><?php echo formatCurrency((float) $item['revenue']); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Analytics | Manager Portal</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <style>
-        body { font-family: 'Poppins', sans-serif; margin: 0; display: flex; background: #f4f7f6; }
-        .sidebar { width: 250px; background: #2c3e50; height: 100vh; color: white; padding: 20px; position: fixed; }
-        .sidebar a { display: block; color: #bdc3c7; text-decoration: none; padding: 12px; transition: 0.3s; border-radius: 5px; }
-        .sidebar a:hover, .active { background: #34495e; color: white; }
-        .sidebar i { margin-right: 10px; }
+<section class="section-title" style="margin-top:32px;">
+    <h2>Discount Performance</h2>
+</section>
+<?php if (empty($discountPerformance)): ?>
+    <div class="card"><div class="card-body"><p>No discount campaign data available.</p></div></div>
+<?php else: ?>
+    <table class="table">
+        <thead><tr><th>Item</th><th>Discount</th><th>Valid</th><th>Status</th><th>Orders Used</th><th>Items Sold</th></tr></thead>
+        <tbody>
+            <?php foreach ($discountPerformance as $discount): ?>
+                <tr>
+                    <td><?php echo sanitize($discount['item_name']); ?></td>
+                    <td><?php echo sanitize($discount['discount_pct']); ?>%</td>
+                    <td><?php echo sanitize($discount['valid_from']); ?> to <?php echo sanitize($discount['valid_until']); ?></td>
+                    <td><?php echo (int) $discount['is_active'] === 1 ? 'Active' : 'Inactive'; ?></td>
+                    <td><?php echo sanitize($discount['orders_used']); ?></td>
+                    <td><?php echo sanitize($discount['items_sold']); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+<?php endif; ?>
 
-        .main-content { margin-left: 270px; padding: 30px; width: calc(100% - 270px); }
-        
-        .stat-grid { display: flex; gap: 20px; margin-bottom: 30px; }
-        .card { background: white; padding: 25px; border-radius: 12px; flex: 1; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-top: 4px solid #3498db; }
-        .card h3 { color: #7f8c8d; margin: 0; font-size: 15px; text-transform: uppercase; }
-        .card p { font-size: 32px; margin: 10px 0; color: #2c3e50; font-weight: bold; }
-
-        .chart-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    </style>
-</head>
-<body>
-
-    <div class="sidebar">
-        <h2 style="text-align: center;">RM Portal</h2>
-        <hr style="border: 0.5px solid #444;">
-        <a href="dashboard.php"><i class="fas fa-th-large"></i> Dashboard</a>
-        <a href="profile.php"><i class="fas fa-store"></i> Profile</a>
-        <a href="menu.php"><i class="fas fa-utensils"></i> Menu</a>
-        <a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a>
-        <a href="reviews.php"><i class="fas fa-star"></i> Reviews</a>
-        <a href="analytics.php" class="active"><i class="fas fa-chart-bar"></i> Analytics</a>
-        <br><br>
-        <a href="../controllers/AuthController.php?action=logout" style="color: #e74c3c;"><i class="fas fa-power-off"></i> Logout</a>
-    </div>
-
-    <div class="main-content">
-        <h1><i class="fas fa-chart-line"></i> Restaurant Analytics</h1>
-
-        <div class="stat-grid">
-            <div class="card">
-                <h3>Total Revenue</h3>
-                <p>$<?php echo number_format($revenue, 2); ?></p>
-            </div>
-            <div class="card" style="border-top-color: #2ecc71;">
-                <h3>Orders Completed</h3>
-                <p><?php echo $orders; ?></p>
-            </div>
-            <div class="card" style="border-top-color: #f1c40f;">
-                <h3>Avg. Order Value</h3>
-                <p>$<?php echo ($orders > 0) ? number_format($revenue / $orders, 2) : '0.00'; ?></p>
-            </div>
-        </div>
-
-        <div class="chart-container">
-            <h3>Revenue Trend (Last 7 Days)</h3>
-            <canvas id="revenueChart"></canvas>
-        </div>
-    </div>
-
-    <script>
-        const ctx = document.getElementById('revenueChart').getContext('2d');
-        const revenueChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: <?php echo json_encode($labels); ?>,
-                datasets: [{
-                    label: 'Daily Revenue ($)',
-                    data: <?php echo json_encode($amounts); ?>,
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: { beginAtZero: true }
-                }
-            }
-        });
-    </script>
-</body>
-</html>
