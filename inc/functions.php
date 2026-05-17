@@ -2,9 +2,9 @@
 session_start();
 require_once __DIR__ . '/../config/database.php';
 
-function sanitize(string $value): string
+function sanitize($value): string
 {
-    return htmlspecialchars(trim($value), ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(trim((string)$value), ENT_QUOTES, 'UTF-8');
 }
 
 function redirect(string $url): void
@@ -52,10 +52,8 @@ function requireLogin(): void
 
 function requireAdmin(): void
 {
-    $current = $_SERVER['PHP_SELF'] ?? '';
-    $loginPath = strpos($current, '/admin/') !== false ? 'login.php' : 'admin/login.php';
     if (!isAdmin()) {
-        redirect($loginPath);
+        redirect('public/index.php?route=auth&action=unified');
     }
 }
 
@@ -93,13 +91,30 @@ function cartTotal(): float
 
     $ids = array_keys($items);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $sql = "SELECT id, price FROM products WHERE id IN ($placeholders) AND status = 'active'";
+    $sql = "SELECT id, price,
+                COALESCE((
+                    SELECT d.discount_pct
+                    FROM discounts d
+                    WHERE d.menu_item_id = products.menu_item_id
+                      AND d.is_active = 1
+                      AND d.valid_from <= NOW()
+                      AND d.valid_until >= NOW()
+                    ORDER BY d.discount_pct DESC
+                    LIMIT 1
+                ), 0) AS discount_pct
+            FROM products
+            WHERE id IN ($placeholders) AND status = 'active'";
     $types = str_repeat('i', count($ids));
     $params = $ids;
     $rows = db_fetch_all($sql, $types, $params);
 
     foreach ($rows as $row) {
-        $total += $row['price'] * ($items[$row['id']] ?? 0);
+        $discountPct = (float) ($row['discount_pct'] ?? 0);
+        $price = (float) $row['price'];
+        if ($discountPct > 0) {
+            $price = $price * (1 - ($discountPct / 100));
+        }
+        $total += $price * ($items[$row['id']] ?? 0);
     }
 
     return $total;
@@ -133,7 +148,36 @@ function clearCart(): void
 
 function formatCurrency(float $amount): string
 {
-    return '₱' . number_format($amount, 2);
+    return 'BDT' . number_format($amount, 2);
+}
+
+/**
+ * Convert PHP amount to BDT using a stored rate in settings.
+ * Falls back to 1.0 if no rate is configured.
+ */
+function convertPhpToBdt(float $amount): float
+{
+    $rate = (float) (getSetting('php_to_bdt_rate') ?? 1.0);
+    return $amount * $rate;
+}
+
+/**
+ * Format amount with a currency code. Supports 'BDT' and default 'PHP'.
+ */
+function formatCurrencyWithCode(float $amount, string $code = 'PHP'): string
+{
+    if (strtoupper($code) === 'BDT') {
+        return 'BDT ' . number_format($amount, 2);
+    }
+    return 'BDT ' . number_format($amount, 2);
+}
+
+/**
+ * Format numeric amount as BDT without converting the value (just changes the label).
+ */
+function formatAsBdt(float $amount): string
+{
+    return 'BDT ' . number_format($amount, 2);
 }
 
 function getCartProducts(): array
@@ -145,15 +189,57 @@ function getCartProducts(): array
 
     $ids = array_keys($items);
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $sql = "SELECT id, name, price, image FROM products WHERE id IN ($placeholders) AND status = 'active'";
+    $sql = "SELECT id, name, price, image, restaurant_id, menu_item_id,
+                COALESCE((
+                    SELECT d.id
+                    FROM discounts d
+                    WHERE d.menu_item_id = products.menu_item_id
+                      AND d.is_active = 1
+                      AND d.valid_from <= NOW()
+                      AND d.valid_until >= NOW()
+                    ORDER BY d.discount_pct DESC
+                    LIMIT 1
+                ), 0) AS discount_id,
+                COALESCE((
+                    SELECT d.discount_pct
+                    FROM discounts d
+                    WHERE d.menu_item_id = products.menu_item_id
+                      AND d.is_active = 1
+                      AND d.valid_from <= NOW()
+                      AND d.valid_until >= NOW()
+                    ORDER BY d.discount_pct DESC
+                    LIMIT 1
+                ), 0) AS discount_pct
+            FROM products
+            WHERE id IN ($placeholders) AND status = 'active'";
     $types = str_repeat('i', count($ids));
     $params = $ids;
     $products = db_fetch_all($sql, $types, $params);
 
     foreach ($products as &$product) {
         $product['quantity'] = $items[$product['id']];
+        $product['original_price'] = (float) $product['price'];
+        $discountPct = (float) ($product['discount_pct'] ?? 0);
+        if ($discountPct > 0) {
+            $product['price'] = (float) $product['price'] * (1 - ($discountPct / 100));
+        }
         $product['subtotal'] = $product['price'] * $product['quantity'];
     }
 
     return $products;
+}
+
+function getSetting($key)
+{
+    // detect schema variations in `settings` table
+    $cols = db_fetch_all("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'settings'");
+    $colNames = array_column($cols, 'COLUMN_NAME');
+    $keyCol = in_array('key', $colNames, true) ? 'key' : (in_array('k', $colNames, true) ? 'k' : null);
+    $valCol = in_array('value', $colNames, true) ? 'value' : (in_array('v', $colNames, true) ? 'v' : null);
+    if ($keyCol === null || $valCol === null) return null;
+
+    // backtick identifiers to avoid reserved-word conflicts (e.g. `key`)
+    $sql = "SELECT `{$valCol}` AS value FROM `settings` WHERE `{$keyCol}` = ?";
+    $row = db_fetch_one($sql, 's', [$key]);
+    return $row['value'] ?? null;
 }
