@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../inc/functions.php';
 requireAdmin();
 
+// Update order status via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $orderId = isset($_POST['order_id']) ? (int) $_POST['order_id'] : 0;
     $status = $_POST['status'] ?? '';
@@ -11,7 +12,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$orders = db_fetch_all('SELECT o.id, o.total_amount, o.status, o.created_at, u.name AS customer FROM orders o JOIN users u ON u.id = o.user_id ORDER BY o.created_at DESC');
+// Filters: status, date_from, date_to, customer (name/email), delivery_agent
+$filters = [];
+$types = '';
+$params = [];
+
+$statusFilter = $_GET['status'] ?? '';
+if ($statusFilter !== '') {
+    $filters[] = 'o.status = ?';
+    $types .= 's';
+    $params[] = $statusFilter;
+}
+
+$from = $_GET['from'] ?? '';
+$to = $_GET['to'] ?? '';
+if ($from !== '') {
+    $filters[] = 'DATE(o.created_at) >= ?';
+    $types .= 's';
+    $params[] = $from;
+}
+if ($to !== '') {
+    $filters[] = 'DATE(o.created_at) <= ?';
+    $types .= 's';
+    $params[] = $to;
+}
+
+$customer = trim($_GET['customer'] ?? '');
+if ($customer !== '') {
+    $filters[] = '(u.name LIKE ? OR u.email LIKE ?)';
+    $types .= 'ss';
+    $params[] = "%$customer%";
+    $params[] = "%$customer%";
+}
+
+$deliveryAgent = trim($_GET['delivery_agent'] ?? '');
+if ($deliveryAgent !== '') {
+    $filters[] = '(da.name LIKE ? OR da.email LIKE ?)';
+    $types .= 'ss';
+    $params[] = "%$deliveryAgent%";
+    $params[] = "%$deliveryAgent%";
+}
+
+$where = '';
+if (!empty($filters)) {
+    $where = 'WHERE ' . implode(' AND ', $filters);
+}
+
+$sql = "SELECT o.id, o.total_amount, o.status, o.created_at, u.name AS customer, da.name AS delivery_agent FROM orders o JOIN users u ON u.id = o.user_id LEFT JOIN users da ON da.id = o.delivery_agent_id $where ORDER BY o.created_at DESC";
+if ($types !== '') {
+    $orders = db_fetch_all($sql, $types, $params);
+} else {
+    $orders = db_fetch_all($sql);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -29,6 +81,7 @@ $orders = db_fetch_all('SELECT o.id, o.total_amount, o.status, o.created_at, u.n
         <nav>
             <a href="dashboard.php">Dashboard</a>
             <a href="orders.php">Orders</a>
+            <a href="restaurants.php">Restaurants</a>
             <a href="../index.php">Shop</a>
             <a href="logout.php">Logout</a>
         </nav>
