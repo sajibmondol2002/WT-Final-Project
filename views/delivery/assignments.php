@@ -1,5 +1,6 @@
 <?php
 $statusMap = [
+    // These are the possible delivery statuses and their corresponding labels and CSS classes
     'pending'    => ['label'=>'⏳ Pending',    'class'=>'status-pending'],
     'picked_up'  => ['label'=>'📦 Picked Up',  'class'=>'status-picked_up'],
     'on_the_way' => ['label'=>'🚗 On the Way', 'class'=>'status-on_the_way'],
