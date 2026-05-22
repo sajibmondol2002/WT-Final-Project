@@ -38,7 +38,7 @@ The system now supports 4 different user roles:
 ## New Features
 
 ### 1. Unified Landing Page
-- **URL**: `http://localhost/Food/public/index.php?route=auth&action=unified` or `login.php`
+- **URL**: `http://localhost/online_food_ordering/public/index.php?route=auth&action=unified` or `login.php`
 - **Features**:
   - Role selection with visual cards
   - Automatic redirection for logged-in users
@@ -254,7 +254,7 @@ isCustomer(): bool
 
 ### Accessing the Login Page
 ```
-http://localhost/Food/public/index.php?route=auth&action=unified
+http://localhost/online_food_ordering/public/index.php?route=auth&action=unified
 ```
 
 ### JavaScript Example - Custom Login
@@ -305,7 +305,7 @@ Use the email address to log in.
 - Do not run `add_setting.sql` or `add_setting_kv.sql` after the updated `init.sql`; those settings are already included.
 
 ### Test Login Flow
-1. Visit `http://localhost/Food/public/index.php?route=auth&action=unified`
+1. Visit `http://localhost/online_food_ordering/public/index.php?route=auth&action=unified`
 2. Select a role (e.g., Customer)
 3. Click "Login" tab
 4. Enter credentials
@@ -313,7 +313,7 @@ Use the email address to log in.
 6. Should redirect to appropriate dashboard
 
 ### Test Registration Flow
-1. Visit `http://localhost/Food/public/index.php?route=auth&action=unified`
+1. Visit `http://localhost/online_food_ordering/public/index.php?route=auth&action=unified`
 2. Select a role (e.g., Restaurant Manager)
 3. Click "Register" tab
 4. Fill in all fields
@@ -380,3 +380,4 @@ For issues or questions, please refer to the main README.md file or contact the 
 ---
 **Last Updated**: May 14, 2026
 **Version**: 2.0 (Role-Based Authentication)
+
